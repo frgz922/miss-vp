@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { getSupabase } from '@/lib/supabase';
 import { useAuth, signOut } from '@/lib/useAuth';
 import { EVENT } from '@/lib/config';
-import { ageFrom, fullName, mainPhoto } from '@/lib/utils';
+import { ageFrom, fullName, mainPhoto, avatarOf } from '@/lib/utils';
 import { AppShell, Badge, Loading, Photo } from '@/components/ui';
 import Icon from '@/components/Icon';
 
@@ -26,13 +26,18 @@ function PerfilInner() {
     getSupabase().from('settings').select('*').eq('id', 1).single().then(({ data }) => setSettings(data || {}));
   }, []);
 
-  if (loading) return <Loading full />;
+  // Quien solo ha votado (aún sin ficha) va directo a inscribirse
+  useEffect(() => {
+    if (profile?.role === 'publico') router.replace('/registro');
+  }, [profile, router]);
+
+  if (loading || profile?.role === 'publico') return <Loading full />;
   const p = profile || {};
   const isFinalist = settings.finalists_public && p.is_finalist;
   const age = ageFrom(p.birth_date);
 
   return (
-    <AppShell links={LINKS} active="perfil" userName={fullName(p)} avatar={mainPhoto(p)} onLogout={() => signOut(router)}>
+    <AppShell links={LINKS} active="perfil" userName={fullName(p)} avatar={avatarOf(p)} onLogout={() => signOut(router)}>
       <div className="page-head">
         <div>
           <h1 className="page-title">Mi Perfil</h1>
@@ -64,8 +69,9 @@ function PerfilInner() {
             <dt>Altura:</dt><dd>{p.height_cm ? `${(p.height_cm / 100).toFixed(2)} m` : '—'}</dd>
             <dt>Peso:</dt><dd>{p.weight_kg ? `${p.weight_kg} kg` : '—'}</dd>
             <dt>Ocupación:</dt><dd>{p.occupation || '—'}</dd>
-            <dt>Instagram:</dt><dd>{p.instagram || '—'}</dd>
-            <dt>Teléfono:</dt><dd>{p.phone || '—'}</dd>
+            <dt>Instapik:</dt><dd>{p.instagram || '—'}</dd>
+            <dt>Celular IC:</dt><dd>{p.phone || '—'}</dd>
+            <dt>Discord:</dt><dd>{p.discord_username ? `@${p.discord_username}` : '—'}</dd>
           </dl>
         </div>
       </div>

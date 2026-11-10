@@ -1,36 +1,38 @@
 'use client';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 import { getSupabase } from '@/lib/supabase';
-import { PublicHeader, Loading, Photo, Toast } from '@/components/ui';
+import { Logo, Loading, Photo, Toast, DiscordChip } from '@/components/ui';
+import DiscordButton from '@/components/DiscordButton';
 import Icon from '@/components/Icon';
-import Turnstile, { TURNSTILE_SITE_KEY } from '@/components/Turnstile';
 import { shortName, mainPhoto } from '@/lib/utils';
-import { STATES } from '@/lib/config';
+import { authErrorMessage } from '@/lib/discord';
+import { EVENT, STATES } from '@/lib/config';
 
 export default function VotarPage() {
   const [list, setList] = useState(null);
   const [status, setStatus] = useState({});
   const [results, setResults] = useState({});
+  const [session, setSession] = useState(null);
+  const [me, setMe] = useState(null);
   const [confirm, setConfirm] = useState(null);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState(null);
   const [q, setQ] = useState('');
   const [st, setSt] = useState('');
-  const [captcha, setCaptcha] = useState(null);
-  const needCaptcha = !!TURNSTILE_SITE_KEY;
-
-  function openConfirm(c) {
-    setCaptcha(null);
-    setConfirm(c);
-  }
 
   const load = useCallback(async () => {
     const sb = getSupabase();
-    const [c, r, s] = await Promise.all([
+    const { data: { session } } = await sb.auth.getSession();
+    const headers = session ? { Authorization: `Bearer ${session.access_token}` } : {};
+    const [c, r, s, p] = await Promise.all([
       sb.from('public_contestants').select('*').order('first_name'),
       sb.rpc('vote_results'),
-      fetch('/api/vote', { cache: 'no-store' }).then((x) => x.json()).catch(() => ({})),
+      fetch('/api/vote', { cache: 'no-store', headers }).then((x) => x.json()).catch(() => ({})),
+      session ? sb.from('profiles').select('discord_id,discord_username,discord_name,discord_avatar').eq('id', session.user.id).single() : { data: null },
     ]);
+    setSession(session);
+    setMe(p.data);
     setList(c.data || []);
     setResults(Object.fromEntries((r.data || []).map((x) => [x.participant_id, Number(x.votes)])));
     setStatus(s || {});
@@ -45,14 +47,20 @@ export default function VotarPage() {
 
   const showResults = Object.keys(results).length > 0;
   const total = Object.values(results).reduce((a, b) => a + b, 0);
+  const blocked = status.hasVoted || (status.ipUsed && !status.hasVoted) || status.votingOpen === false;
+
+  async function logout() {
+    await getSupabase().auth.signOut();
+    load();
+  }
 
   async function vote() {
     setBusy(true);
     try {
       const res = await fetch('/api/vote', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ participantId: confirm.id, captchaToken: captcha }),
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token || ''}` },
+        body: JSON.stringify({ participantId: confirm.id }),
       });
       const data = await res.json();
       if (res.ok) {
@@ -60,7 +68,10 @@ export default function VotarPage() {
         setMsg({ type: 'ok', text: `¡Gracias! Tu voto por ${shortName(confirm)} fue registrado.` });
         load();
       } else {
-        if (res.status === 409) setStatus((s) => ({ ...s, hasVoted: true, votedFor: data.votedFor ?? s.votedFor }));
+        if (res.status === 409) {
+          setStatus((s) => data.ipUsed ? { ...s, ipUsed: true } : { ...s, hasVoted: true, votedFor: data.votedFor ?? s.votedFor });
+        }
+        if (data.needLogin) setSession(null);
         setMsg({ type: 'error', text: data.error || 'No se pudo registrar el voto.' });
       }
     } catch {
@@ -73,16 +84,36 @@ export default function VotarPage() {
 
   return (
     <>
-      <PublicHeader />
+      <header className="topbar">
+        <Link href="/"><Logo /></Link>
+        <div className="topbar-right">
+          {session ? (
+            <>
+              <DiscordChip profile={me} />
+              <button className="btn btn-ghost btn-sm" onClick={logout}><Icon name="logout" /> Salir</button>
+            </>
+          ) : list !== null && (
+            <DiscordButton next="/votar" label="Entrar" className="btn-sm" onError={(m) => setMsg({ type: 'error', text: authErrorMessage(m) })} />
+          )}
+        </div>
+      </header>
+
       <div className="pub-head">
         <h1 className="pub-title gold-text">Votación del Público</h1>
-        <p className="muted">Elige a tu favorita. Solo se permite <b>un voto por conexión</b>.</p>
+        <p className="muted">Elige a tu favorita. <b>Un voto por cuenta de Discord</b> y por conexión.</p>
       </div>
       <div className="pub-wrap">
         {list === null ? <Loading /> : (
           <>
             {status.votingOpen === false && <div className="notice notice-gold mb"><Icon name="info" /> La votación está cerrada en este momento.</div>}
-            {status.hasVoted && <div className="notice notice-ok mb"><Icon name="check" /> Ya registraste tu voto desde esta conexión. ¡Gracias por participar!</div>}
+            {status.hasVoted && <div className="notice notice-ok mb"><Icon name="check" /> Ya registraste tu voto. ¡Gracias por participar!</div>}
+            {!status.hasVoted && status.ipUsed && <div className="notice notice-gold mb"><Icon name="info" /> Ya se registró un voto desde esta conexión (solo se permite uno por IP).</div>}
+            {!session && status.votingOpen !== false && !status.ipUsed && (
+              <div className="notice mb between row-flex">
+                <span className="row-flex" style={{ gap: '.7rem' }}><Icon name="info" /> Para votar, entra con tu cuenta de Discord (mínimo {EVENT.discordMinMonths} meses de antigüedad).</span>
+                <DiscordButton next="/votar" label="Entrar con Discord" className="btn-sm" onError={(m) => setMsg({ type: 'error', text: authErrorMessage(m) })} />
+              </div>
+            )}
 
             <div className="filters">
               <input className="input" placeholder="Buscar por nombre…" value={q} onChange={(e) => setQ(e.target.value)} />
@@ -112,7 +143,7 @@ export default function VotarPage() {
                       )}
                       {mine
                         ? <span className="btn btn-gold btn-sm" aria-disabled="true"><Icon name="check" /> Tu voto</span>
-                        : <button className="btn btn-purple btn-sm" disabled={status.hasVoted || status.votingOpen === false} onClick={() => openConfirm(c)}><Icon name="heart" /> Votar</button>}
+                        : <button className="btn btn-purple btn-sm" disabled={blocked} onClick={() => setConfirm(c)}><Icon name="heart" /> Votar</button>}
                     </div>
                   );
                 })}
@@ -127,12 +158,21 @@ export default function VotarPage() {
           <div className="card modal" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
             <Photo src={mainPhoto(confirm)} alt="" />
             <h3>¿Votar por {shortName(confirm)}?</h3>
-            <p className="muted small" style={{ margin: 0 }}>Solo puedes votar una vez y no podrás cambiar tu voto.</p>
-            <Turnstile onToken={setCaptcha} />
-            <div className="row-flex">
-              <button className="btn btn-ghost" onClick={() => setConfirm(null)} disabled={busy}>Cancelar</button>
-              <button className="btn btn-gold" onClick={vote} disabled={busy || (needCaptcha && !captcha)} title={needCaptcha && !captcha ? 'Completa la verificación' : undefined}><Icon name="heart" /> {busy ? 'Enviando…' : 'Confirmar voto'}</button>
-            </div>
+            {session ? (
+              <>
+                <p className="muted small" style={{ margin: 0 }}>Solo puedes votar una vez y no podrás cambiar tu voto.</p>
+                <div className="row-flex">
+                  <button className="btn btn-ghost" onClick={() => setConfirm(null)} disabled={busy}>Cancelar</button>
+                  <button className="btn btn-gold" onClick={vote} disabled={busy}><Icon name="heart" /> {busy ? 'Enviando…' : 'Confirmar voto'}</button>
+                </div>
+              </>
+            ) : (
+              <>
+                <p className="muted small" style={{ margin: 0 }}>Para votar necesitas entrar con Discord. Tu cuenta debe tener al menos {EVENT.discordMinMonths} meses de antigüedad.</p>
+                <DiscordButton next="/votar" className="btn-block" onError={(m) => setMsg({ type: 'error', text: authErrorMessage(m) })} />
+                <button className="btn btn-ghost btn-sm" onClick={() => setConfirm(null)}>Cancelar</button>
+              </>
+            )}
           </div>
         </div>
       )}

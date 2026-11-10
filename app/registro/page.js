@@ -6,11 +6,11 @@ import { getSupabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/useAuth';
 import { EVENT, STATES } from '@/lib/config';
 import { ageFrom, fullName } from '@/lib/utils';
-import { Logo, Loading, Photo } from '@/components/ui';
+import { Logo, Loading, Photo, DiscordChip } from '@/components/ui';
 import Icon from '@/components/Icon';
 
 const STEPS = ['Datos Personales', 'Información Adicional', 'Fotos Solicitadas', 'Confirmación'];
-const FIELDS = ['first_name', 'last_name', 'birth_date', 'state', 'height_cm', 'weight_kg', 'phone', 'instagram', 'occupation', 'education', 'bio'];
+const FIELDS = ['first_name', 'last_name', 'birth_date', 'state', 'height_cm', 'weight_kg', 'phone', 'instagram', 'occupation', 'about_me', 'bio'];
 
 function RegistroInner() {
   const router = useRouter();
@@ -48,7 +48,7 @@ function RegistroInner() {
       if (form.height_cm < 120 || form.height_cm > 230) return 'Revisa la altura (en centímetros).';
       if (form.weight_kg < 30 || form.weight_kg > 200) return 'Revisa el peso (en kilogramos).';
     }
-    if (s === 2 && !String(form.phone).trim()) return 'El teléfono de contacto es obligatorio.';
+    if (s === 2 && !String(form.phone).trim()) return 'El número de celular IC es obligatorio.';
     if (s === 3 && photos.length < 1) return 'Sube al menos una foto (recomendamos 3: rostro, cuerpo completo y casual).';
     return '';
   }
@@ -61,6 +61,7 @@ function RegistroInner() {
       birth_date: form.birth_date || null,
       photos: nextPhotos,
       photo_url: nextMain,
+      role: 'participant', // pasa de 'publico' a participante al llenar la ficha
       ...extra,
     };
     const { error } = await getSupabase().from('profiles').update(payload).eq('id', user.id);
@@ -160,9 +161,12 @@ function RegistroInner() {
     <>
       <header className="topbar">
         <Link href="/"><Logo /></Link>
-        <Link href={isNew ? '/' : '/perfil'} className="btn btn-ghost btn-sm">
-          <Icon name={isNew ? 'home' : 'left'} /> {isNew ? 'Volver al inicio' : 'Volver a mi perfil'}
-        </Link>
+        <div className="topbar-right">
+          <DiscordChip profile={profile} />
+          <Link href={isNew ? '/' : '/perfil'} className="btn btn-ghost btn-sm">
+            <Icon name={isNew ? 'home' : 'left'} /> {isNew ? 'Inicio' : 'Mi perfil'}
+          </Link>
+        </div>
       </header>
 
       <div className="reg">
@@ -208,12 +212,12 @@ function RegistroInner() {
 
               {step === 2 && (
                 <div className="grid2">
-                  <div className="field"><label className="label">Teléfono / WhatsApp *</label><input className="input" type="tel" value={form.phone} onChange={set('phone')} placeholder="+58 412 000 0000" /></div>
-                  <div className="field"><label className="label">Instagram</label><input className="input" value={form.instagram} onChange={set('instagram')} placeholder="@usuario" /></div>
-                  <div className="field"><label className="label">Ocupación</label><input className="input" value={form.occupation} onChange={set('occupation')} placeholder="Ej. Estudiante, modelo…" /></div>
-                  <div className="field"><label className="label">Nivel de estudios</label><input className="input" value={form.education} onChange={set('education')} placeholder="Ej. Licenciatura en Comunicación" /></div>
+                  <div className="field"><label className="label">Número de celular IC *</label><input className="input" type="tel" value={form.phone} onChange={set('phone')} placeholder="Tu número IC" /></div>
+                  <div className="field"><label className="label">Instapik</label><input className="input" value={form.instagram} onChange={set('instagram')} placeholder="@usuario" /></div>
+                  <div className="field field-full"><label className="label">Ocupación</label><input className="input" value={form.occupation} onChange={set('occupation')} placeholder="Ej. Estudiante, modelo…" /></div>
+                  <div className="field field-full"><label className="label">Acerca de mí</label><textarea className="input" value={form.about_me} onChange={set('about_me')} maxLength={800} placeholder="Preséntate: quién eres, tu personalidad, tus gustos y lo que te hace única." /></div>
                   <div className="field field-full"><label className="label">¿Por qué quieres participar?</label><textarea className="input" value={form.bio} onChange={set('bio')} maxLength={800} placeholder="Cuéntale al jurado sobre ti, tus metas y tu causa social." /></div>
-                  <p className="muted small field-full" style={{ margin: 0 }}>Tu teléfono solo lo verá la organización. En la votación pública solo se muestra tu nombre, estado y fotos.</p>
+                  <p className="muted small field-full" style={{ margin: 0 }}>Tu número de celular IC solo lo verá la organización. En la votación pública solo se muestra tu nombre, estado y fotos.</p>
                 </div>
               )}
 
@@ -249,8 +253,8 @@ function RegistroInner() {
                     <dt>Edad</dt><dd>{age} años</dd>
                     <dt>Estado</dt><dd>{form.state}</dd>
                     <dt>Altura / Peso</dt><dd>{form.height_cm} cm · {form.weight_kg} kg</dd>
-                    <dt>Teléfono</dt><dd>{form.phone || '—'}</dd>
-                    <dt>Instagram</dt><dd>{form.instagram || '—'}</dd>
+                    <dt>Celular IC</dt><dd>{form.phone || '—'}</dd>
+                    <dt>Instapik</dt><dd>{form.instagram || '—'}</dd>
                     <dt>Ocupación</dt><dd>{form.occupation || '—'}</dd>
                     <dt>Fotos</dt><dd>{photos.length}</dd>
                   </dl>

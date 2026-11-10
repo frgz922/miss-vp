@@ -3,6 +3,7 @@ import { createContext, useContext } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth, signOut } from '@/lib/useAuth';
 import { AppShell, Loading } from './ui';
+import { avatarOf } from '@/lib/utils';
 
 const StaffCtx = createContext(null);
 export const useStaff = () => useContext(StaffCtx);
@@ -18,10 +19,10 @@ export default function StaffShell({ active, children }) {
   const router = useRouter();
   const { loading, user, profile } = useAuth({ role: 'staff' });
   if (loading) return <Loading full />;
-  const name = profile?.first_name ? `${profile.first_name} (Staff)` : 'Staff Admin';
+  const name = `${profile?.first_name || profile?.discord_name || profile?.discord_username || 'Staff'} (Staff)`;
   return (
     <StaffCtx.Provider value={{ user, profile }}>
-      <AppShell links={LINKS} active={active} userName={name} avatar={profile?.photo_url} onLogout={() => signOut(router)}>
+      <AppShell links={LINKS} active={active} userName={name} avatar={avatarOf(profile)} onLogout={() => signOut(router)}>
         {children}
       </AppShell>
     </StaffCtx.Provider>

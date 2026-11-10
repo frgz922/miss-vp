@@ -1,35 +1,31 @@
 import Link from 'next/link';
-import Crown from '@/components/Crown';
 import Icon from '@/components/Icon';
 import { EVENT } from '@/lib/config';
 
 export default function Home() {
   return (
     <main className="hero">
-      <div className="lights" aria-hidden="true">
-        <div className="beam" /><div className="beam" /><div className="beam" /><div className="beam" />
-        <div className="sparkles" />
-        <div className="stage-glow" />
-      </div>
+      {/* Imagen de portada: cámbiala reemplazando public/fondo-inicio.jpg */}
+      <img
+        className="hero-bg"
+        src="/fondo-inicio.jpg"
+        alt={`${EVENT.line1} ${EVENT.line2} — ${EVENT.tagline}`}
+        fetchPriority="high"
+      />
+      <h1 className="sr-only">{EVENT.line1} {EVENT.line2}</h1>
 
-      <div className="hero-inner">
-        <div className="hero-brand">
-          <Crown className="hero-crown" />
-          <h1 className="hero-title gold-text">{EVENT.line1.split(' ').map((w, i) => <span key={i}>{w}<br /></span>)}</h1>
-          <div className="hero-sub">{EVENT.line2}</div>
-          <p className="script hero-tag">{EVENT.tagline}</p>
+      <div className="card login-card">
+        <div>
+          <h2 className="gold-text">Iniciar Sesión</h2>
+          <p className="muted small" style={{ margin: 0 }}>Accede a tu cuenta</p>
         </div>
-
-        <div className="card login-card">
-          <div>
-            <h2>Iniciar Sesión</h2>
-            <p className="muted small">Accede a tu cuenta</p>
-          </div>
-          <Link className="btn btn-gold btn-block" href="/login?rol=participante"><Icon name="user" /> Soy Participante</Link>
-          <Link className="btn btn-purple btn-block" href="/login?rol=staff"><Icon name="shield" /> Soy del Staff</Link>
-          <div className="divider">o</div>
-          <Link className="btn btn-ghost btn-block" href="/votar"><Icon name="heart" /> Votación del Público</Link>
-          <Link className="btn btn-ghost btn-block" href="/finalistas"><Icon name="award" /> Ver las finalistas</Link>
+        <div className="login-btns">
+          <Link className="btn btn-gold" href="/login?rol=participante"><Icon name="user" /> Participante</Link>
+          <Link className="btn btn-purple" href="/login?rol=staff"><Icon name="shield" /> Staff</Link>
+        </div>
+        <div className="login-links">
+          <Link href="/votar"><Icon name="heart" /> Votación del público</Link>
+          <Link href="/finalistas"><Icon name="award" /> Finalistas</Link>
         </div>
       </div>
     </main>

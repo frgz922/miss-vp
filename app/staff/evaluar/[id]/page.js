@@ -80,10 +80,11 @@ function Evaluar() {
               <dt>Altura</dt><dd>{p.height_cm ? `${p.height_cm} cm` : '—'}</dd>
               <dt>Peso</dt><dd>{p.weight_kg ? `${p.weight_kg} kg` : '—'}</dd>
               <dt>Ocupación</dt><dd>{p.occupation || '—'}</dd>
-              <dt>Estudios</dt><dd>{p.education || '—'}</dd>
-              <dt>Instagram</dt><dd>{p.instagram || '—'}</dd>
-              <dt>Teléfono</dt><dd>{p.phone || '—'}</dd>
-              <dt>Correo</dt><dd style={{ wordBreak: 'break-all' }}>{p.email || '—'}</dd>
+              <dt>Instapik</dt><dd>{p.instagram || '—'}</dd>
+              <dt>Celular IC</dt><dd>{p.phone || '—'}</dd>
+              <dt>Discord</dt><dd style={{ wordBreak: 'break-all' }}>{p.discord_username ? `@${p.discord_username}` : '—'}</dd>
+              <dt>Discord ID</dt><dd style={{ wordBreak: 'break-all' }}>{p.discord_id || '—'}</dd>
+              <dt>Cuenta desde</dt><dd>{p.discord_created_at ? new Date(p.discord_created_at).toLocaleDateString('es') : '—'}</dd>
             </dl>
           </div>
         </div>
@@ -122,6 +123,13 @@ function Evaluar() {
               </div>
             </div>
           </div>
+
+          {p.about_me && (
+            <div className="card mt card-pad">
+              <div className="label" style={{ marginBottom: '.4rem' }}>Acerca de mí</div>
+              <p className="muted" style={{ margin: 0, whiteSpace: 'pre-wrap' }}>{p.about_me}</p>
+            </div>
+          )}
 
           {p.bio && (
             <div className="card mt card-pad">

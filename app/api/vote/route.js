@@ -4,6 +4,7 @@ import crypto from 'node:crypto';
 export const dynamic = 'force-dynamic';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const MIN_MONTHS = 3; // igual que EVENT.discordMinMonths y discord_min_age() en el SQL
 
 function admin() {
   return createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SECRET_KEY, {
@@ -11,6 +12,29 @@ function admin() {
   });
 }
 
+// ---------- Discord ----------
+function discordIdOf(user) {
+  const ident = user?.identities?.find((i) => i.provider === 'discord');
+  return ident?.identity_data?.provider_id || ident?.id || null;
+}
+
+function discordOldEnough(id) {
+  if (!id || !/^\d{15,20}$/.test(id)) return false;
+  const created = new Date(Number((BigInt(id) >> 22n) + 1420070400000n));
+  const limit = new Date();
+  limit.setMonth(limit.getMonth() - MIN_MONTHS);
+  return created <= limit;
+}
+
+// Usuario a partir del token de sesión que manda el navegador (verificado por Supabase)
+async function userFrom(req, sb) {
+  const token = (req.headers.get('authorization') || '').replace(/^Bearer\s+/i, '');
+  if (!token) return null;
+  const { data, error } = await sb.auth.getUser(token);
+  return error ? null : data.user;
+}
+
+// ---------- IP ----------
 // En Vercel estas cabeceras las pone la plataforma (el cliente no puede falsificarlas).
 function clientIp(req) {
   const h = req.headers;
@@ -42,40 +66,32 @@ function ipHash(req) {
     .digest('hex');
 }
 
-// Verifica el captcha de Cloudflare Turnstile en el servidor (el token es de un solo uso).
-async function verifyCaptcha(token, ip) {
-  const secret = process.env.TURNSTILE_SECRET_KEY;
-  if (!secret) {
-    // Si la web muestra captcha pero falta la clave secreta, no aceptamos votos sin verificar.
-    return process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ? 'misconfigured' : 'ok';
-  }
-  if (!token || typeof token !== 'string' || token.length > 2048) return 'fail';
-  const form = new URLSearchParams({ secret, response: token });
-  if (ip && ip !== 'unknown') form.append('remoteip', ip);
-  try {
-    const r = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', { method: 'POST', body: form });
-    const d = await r.json();
-    return d.success === true ? 'ok' : 'fail';
-  } catch {
-    return 'fail';
-  }
-}
-
 async function votingOpen(sb) {
   const { data } = await sb.from('settings').select('voting_open').eq('id', 1).single();
   return data?.voting_open !== false;
 }
 
+const json = (body, status = 200) => Response.json(body, { status });
+
+// Estado: ¿la votación está abierta? ¿esta cuenta o esta conexión ya votó?
 export async function GET(req) {
   try {
     const sb = admin();
-    const [{ data: vote }, open] = await Promise.all([
-      sb.from('votes').select('participant_id').eq('ip_hash', ipHash(req)).maybeSingle(),
+    const user = await userFrom(req, sb);
+    const [open, byIp, byUser] = await Promise.all([
       votingOpen(sb),
+      sb.from('votes').select('id').eq('ip_hash', ipHash(req)).maybeSingle(),
+      user ? sb.from('votes').select('participant_id').eq('voter_id', user.id).maybeSingle() : { data: null },
     ]);
-    return Response.json({ hasVoted: !!vote, votedFor: vote?.participant_id ?? null, votingOpen: open });
-  } catch (e) {
-    return Response.json({ error: 'Servidor no configurado.' }, { status: 500 });
+    return json({
+      votingOpen: open,
+      loggedIn: !!user,
+      hasVoted: !!byUser.data,
+      votedFor: byUser.data?.participant_id ?? null,
+      ipUsed: !!byIp.data,
+    });
+  } catch {
+    return json({ error: 'Servidor no configurado.' }, 500);
   }
 }
 
@@ -83,34 +99,42 @@ export async function POST(req) {
   let body;
   try { body = await req.json(); } catch { body = {}; }
   const participantId = body?.participantId;
-  if (!participantId || !UUID.test(participantId)) {
-    return Response.json({ error: 'Participante no válida.' }, { status: 400 });
-  }
-
-  const captcha = await verifyCaptcha(body?.captchaToken, clientIp(req));
-  if (captcha === 'misconfigured') {
-    return Response.json({ error: 'Falta configurar el captcha en el servidor.' }, { status: 500 });
-  }
-  if (captcha !== 'ok') {
-    return Response.json({ error: 'No pudimos verificar que eres una persona. Inténtalo de nuevo.' }, { status: 400 });
-  }
+  if (!participantId || !UUID.test(participantId)) return json({ error: 'Participante no válida.' }, 400);
 
   const sb = admin();
-  if (!(await votingOpen(sb))) {
-    return Response.json({ error: 'La votación está cerrada.' }, { status: 403 });
+
+  // 1) Debe haber iniciado sesión con Discord
+  const user = await userFrom(req, sb);
+  if (!user) return json({ error: 'Inicia sesión con Discord para votar.', needLogin: true }, 401);
+  const discordId = discordIdOf(user);
+  if (!discordId) return json({ error: 'Tu cuenta no está vinculada a Discord.' }, 403);
+
+  // 2) La cuenta de Discord debe tener la antigüedad mínima
+  if (!discordOldEnough(discordId)) {
+    return json({ error: `Tu cuenta de Discord debe tener al menos ${MIN_MONTHS} meses para votar.` }, 403);
   }
+
+  if (!(await votingOpen(sb))) return json({ error: 'La votación está cerrada.' }, 403);
 
   const { data: contestant } = await sb.from('public_contestants').select('id').eq('id', participantId).maybeSingle();
-  if (!contestant) return Response.json({ error: 'Participante no encontrada.' }, { status: 404 });
+  if (!contestant) return json({ error: 'Participante no encontrada.' }, 404);
 
-  const hash = ipHash(req);
-  const { error } = await sb.from('votes').insert({ participant_id: participantId, ip_hash: hash });
+  // 3) 1 voto por cuenta de Discord y 1 por IP (lo garantiza la base de datos con índices únicos)
+  const { error } = await sb.from('votes').insert({
+    participant_id: participantId,
+    ip_hash: ipHash(req),
+    voter_id: user.id,
+    discord_id: discordId,
+  });
   if (error) {
     if (error.code === '23505') {
-      const { data: prev } = await sb.from('votes').select('participant_id').eq('ip_hash', hash).maybeSingle();
-      return Response.json({ error: 'Ya se registró un voto desde esta conexión.', votedFor: prev?.participant_id }, { status: 409 });
+      if (/ip_hash/.test(error.message)) {
+        return json({ error: 'Ya se registró un voto desde esta conexión (IP).', ipUsed: true }, 409);
+      }
+      const { data: prev } = await sb.from('votes').select('participant_id').eq('voter_id', user.id).maybeSingle();
+      return json({ error: 'Tu cuenta de Discord ya votó.', votedFor: prev?.participant_id }, 409);
     }
-    return Response.json({ error: 'No se pudo registrar el voto.' }, { status: 500 });
+    return json({ error: 'No se pudo registrar el voto.' }, 500);
   }
-  return Response.json({ ok: true });
+  return json({ ok: true });
 }

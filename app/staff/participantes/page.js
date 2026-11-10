@@ -15,7 +15,7 @@ function Participantes() {
 
   const list = useMemo(() => participants.filter((p) =>
     (!status || p.status === status) &&
-    (!q || `${fullName(p)} ${p.state || ''} ${p.email || ''}`.toLowerCase().includes(q.toLowerCase()))
+    (!q || `${fullName(p)} ${p.state || ''} ${p.discord_username || ''} ${p.discord_name || ''} ${p.discord_id || ''}`.toLowerCase().includes(q.toLowerCase()))
   ), [participants, q, status]);
 
   if (loading) return <Loading />;
@@ -28,7 +28,7 @@ function Participantes() {
         </div>
       </div>
       <div className="filters">
-        <input className="input" placeholder="Buscar por nombre, estado o correo…" value={q} onChange={(e) => setQ(e.target.value)} />
+        <input className="input" placeholder="Buscar por nombre, estado o Discord…" value={q} onChange={(e) => setQ(e.target.value)} />
         <select className="input" value={status} onChange={(e) => setStatus(e.target.value)} style={{ maxWidth: 220 }}>
           <option value="">Todos los estados</option>
           {Object.entries(STATUS).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
@@ -42,7 +42,7 @@ function Participantes() {
               {list.map((p) => (
                 <tr key={p.id}>
                   <td style={{ width: 60 }}><Photo src={mainPhoto(p)} className="thumb" /></td>
-                  <td><b>{fullName(p)}</b><div className="muted small">{p.email}</div></td>
+                  <td><b>{fullName(p)}</b><div className="muted small">{p.discord_username ? `@${p.discord_username}` : '—'}</div></td>
                   <td>{p.state || '—'}</td>
                   <td>{ageFrom(p.birth_date) ?? '—'}</td>
                   <td className="num">{fmt(p.juryAvg)}<span className="muted small"> ({p.evaluations.length})</span></td>

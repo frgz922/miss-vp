@@ -16,6 +16,16 @@ export function Logo({ size = 'sm' }) {
   );
 }
 
+export function DiscordChip({ profile }) {
+  if (!profile?.discord_username && !profile?.discord_name) return null;
+  return (
+    <span className="discord-chip" title={`Discord ID: ${profile.discord_id || ''}`}>
+      {profile.discord_avatar ? <img src={profile.discord_avatar} alt="" /> : <span className="avatar-empty"><Icon name="user" /></span>}
+      <span className="user-name">{profile.discord_name || profile.discord_username}</span>
+    </span>
+  );
+}
+
 export function Photo({ src, alt = '', className = '' }) {
   if (src) return <img src={src} alt={alt} className={`photo ${className}`} loading="lazy" />;
   return (
