@@ -26,6 +26,11 @@ function discordOldEnough(id) {
   return created <= limit;
 }
 
+async function isException(sb, discordId) {
+  const { data } = await sb.from('discord_exceptions').select('discord_id').eq('discord_id', discordId).maybeSingle();
+  return !!data;
+}
+
 // Usuario a partir del token de sesión que manda el navegador (verificado por Supabase)
 async function userFrom(req, sb) {
   const token = (req.headers.get('authorization') || '').replace(/^Bearer\s+/i, '');
@@ -110,7 +115,8 @@ export async function POST(req) {
   if (!discordId) return json({ error: 'Tu cuenta no está vinculada a Discord.' }, 403);
 
   // 2) La cuenta de Discord debe tener la antigüedad mínima
-  if (!discordOldEnough(discordId)) {
+  //    (salvo que el staff la haya autorizado como excepción)
+  if (!discordOldEnough(discordId) && !(await isException(sb, discordId))) {
     return json({ error: `Tu cuenta de Discord debe tener al menos ${MIN_MONTHS} meses para votar.` }, 403);
   }
 

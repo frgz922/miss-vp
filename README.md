@@ -22,6 +22,7 @@ El inicio de sesión es **solo con Discord**.
 ### Discord: ID y antigüedad mínima
 - Al entrar por primera vez se guardan en `profiles`: `discord_id`, `discord_username`, `discord_name`, `discord_avatar` y `discord_created_at`.
 - La fecha de creación sale del propio ID de Discord. **Si la cuenta tiene menos de 3 meses, la base de datos rechaza el registro** (la cuenta ni siquiera se crea) y la persona ve el aviso correspondiente. El servidor de votos lo vuelve a comprobar antes de aceptar cada voto.
+- **Excepciones:** en **Staff → Votación y ajustes → Excepciones de antigüedad de Discord** puedes autorizar por ID una cuenta con menos de 3 meses. Al quitarla de la lista, esa cuenta ya no podrá votar; si ya se había registrado, su perfil se conserva.
 - Para cambiar los 3 meses: `discord_min_age()` en `supabase/schema.sql`, `discordMinMonths` en `lib/config.js` y `MIN_MONTHS` en `app/api/vote/route.js`.
 
 ### Cerrar inscripciones

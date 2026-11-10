@@ -106,6 +106,21 @@ language sql stable security definer set search_path = public as $$
   select exists (select 1 from public.profiles where id = auth.uid() and role = 'staff');
 $$;
 
+-- ---------- Excepciones de antigüedad ----------
+-- Cuentas de Discord que el staff autoriza aunque tengan menos de 3 meses.
+create table if not exists public.discord_exceptions (
+  discord_id text primary key check (discord_id ~ '^[0-9]{15,20}$'),
+  note       text,
+  created_at timestamptz not null default now()
+);
+
+-- ¿Esta cuenta de Discord puede entrar? (antigüedad suficiente o autorizada por el staff)
+create or replace function public.discord_allowed(did text) returns boolean
+language sql stable security definer set search_path = public as $$
+  select coalesce(public.discord_created_at(did) <= now() - public.discord_min_age(), false)
+      or exists (select 1 from public.discord_exceptions e where e.discord_id = did);
+$$;
+
 -- Al entrar por primera vez con Discord: valida la antigüedad y crea el perfil.
 -- Si la cuenta de Discord es demasiado nueva, el registro se rechaza por completo.
 create or replace function public.handle_new_user() returns trigger
@@ -119,7 +134,7 @@ begin
     if born is null then
       raise exception 'DISCORD_ID_INVALIDO';
     end if;
-    if born > now() - public.discord_min_age() then
+    if not public.discord_allowed(did) then
       raise exception 'DISCORD_CUENTA_NUEVA';
     end if;
   end if;
@@ -188,6 +203,7 @@ alter table public.profiles    enable row level security;
 alter table public.evaluations enable row level security;
 alter table public.votes       enable row level security;  -- sin políticas: nadie del cliente lee/escribe
 alter table public.settings    enable row level security;
+alter table public.discord_exceptions enable row level security;
 
 drop policy if exists "perfil propio o staff (leer)" on public.profiles;
 create policy "perfil propio o staff (leer)" on public.profiles
@@ -202,6 +218,10 @@ create policy "staff evalua" on public.evaluations
 
 drop policy if exists "ajustes visibles" on public.settings;
 create policy "ajustes visibles" on public.settings for select using (true);
+drop policy if exists "staff gestiona excepciones" on public.discord_exceptions;
+create policy "staff gestiona excepciones" on public.discord_exceptions
+  for all to authenticated using (public.is_staff()) with check (public.is_staff());
+
 drop policy if exists "staff cambia ajustes" on public.settings;
 create policy "staff cambia ajustes" on public.settings
   for update to authenticated using (public.is_staff());
@@ -249,6 +269,9 @@ grant execute on function public.vote_results() to anon, authenticated;
 grant execute on function public.my_vote() to authenticated;
 grant execute on function public.is_staff() to anon, authenticated;
 grant execute on function public.registrations_open() to anon, authenticated;
+grant select, insert, delete on public.discord_exceptions to authenticated;
+grant select on public.discord_exceptions to service_role;
+grant execute on function public.discord_allowed(text) to authenticated;
 
 -- ---------- Almacenamiento de fotos ----------
 insert into storage.buckets (id, name, public) values ('photos', 'photos', true)
@@ -269,6 +292,8 @@ create policy "borrar fotos propias" on storage.objects for delete to authentica
 --    -- o por ID:  where discord_id = '123456789012345678';
 --  Ver quién está registrado:
 --    select discord_username, discord_id, role, discord_created_at from public.profiles;
+--  Permitir una cuenta de Discord con menos de 3 meses (también se puede desde el panel de staff):
+--    insert into public.discord_exceptions (discord_id, note) values ('123456789012345678', 'motivo');
 --  Reiniciar la votación:
 --    truncate public.votes;
 -- =====================================================================

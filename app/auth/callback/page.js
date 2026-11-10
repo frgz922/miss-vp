@@ -33,9 +33,14 @@ function CallbackInner() {
       if (done) return;
       if (error || !session) return setErr(authErrorMessage(error?.message || 'No se recibió la sesión de Discord.'));
 
-      if (!isOldEnough(discordIdOf(session.user))) {
-        await sb.auth.signOut();
-        return setErr(authErrorMessage('DISCORD_CUENTA_NUEVA'));
+      // Cuenta demasiado nueva: solo pasa si el staff la autorizó como excepción
+      const did = discordIdOf(session.user);
+      if (!isOldEnough(did)) {
+        const { data: allowed } = await sb.rpc('discord_allowed', { did });
+        if (allowed !== true) {
+          await sb.auth.signOut();
+          return setErr(authErrorMessage('DISCORD_CUENTA_NUEVA'));
+        }
       }
 
       const { data: st } = await sb.from('settings').select('registrations_open').eq('id', 1).single();
