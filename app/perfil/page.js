@@ -70,7 +70,7 @@ function PerfilInner() {
             <dt>Ocupación:</dt><dd>{p.occupation || '—'}</dd>
             <dt>Instapik:</dt><dd>{p.instagram || '—'}</dd>
             <dt>Celular IC:</dt><dd>{p.phone || '—'}</dd>
-            <dt>Discord:</dt><dd>{p.discord_username ? `@${p.discord_username}` : '—'}</dd>
+            <dt>Discord:</dt><dd style={{ wordBreak: 'break-word' }}>{p.discord_username ? `@${p.discord_username}` : '—'}{p.discord_id && ` (${p.discord_id})`}</dd>
           </dl>
         </div>
       </div>
