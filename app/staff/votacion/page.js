@@ -8,6 +8,7 @@ import { getSupabase } from '@/lib/supabase';
 import { fullName, mainPhoto } from '@/lib/utils';
 
 const TOGGLES = [
+  { key: 'registrations_open', title: 'Inscripciones abiertas', desc: 'Al apagarlo, las participantes ya no pueden inscribirse ni modificar su postulación (el botón "Participante" se desactiva).' },
   { key: 'voting_open', title: 'Votación abierta', desc: 'Permite que el público vote en /votar.' },
   { key: 'results_public', title: 'Mostrar resultados al público', desc: 'Muestra el conteo de votos en la página de votación.' },
   { key: 'finalists_public', title: 'Finalistas publicadas', desc: 'Muestra las finalistas en /finalistas.' },

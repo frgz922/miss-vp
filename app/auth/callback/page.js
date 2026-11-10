@@ -38,10 +38,14 @@ function CallbackInner() {
         return setErr(authErrorMessage('DISCORD_CUENTA_NUEVA'));
       }
 
-      const to = await routeAfterLogin(sb, session.user.id, next);
+      const { data: st } = await sb.from('settings').select('registrations_open').eq('id', 1).single();
+      const closed = st?.registrations_open === false;
+      const to = await routeAfterLogin(sb, session.user.id, next, { closedForParticipants: closed });
       if (!to) {
         await sb.auth.signOut();
-        return setErr('Tu cuenta de Discord no tiene acceso de staff. Pide a la organización que te habilite.');
+        return setErr(next === 'staff'
+          ? 'Tu cuenta de Discord no tiene acceso de staff. Pide a la organización que te habilite.'
+          : 'Las inscripciones están cerradas. Ya no es posible inscribirse ni modificar la postulación.');
       }
       router.replace(to);
     })();

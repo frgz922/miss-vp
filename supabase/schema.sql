@@ -92,6 +92,13 @@ create table if not exists public.settings (
   finalists_public boolean not null default false
 );
 insert into public.settings (id) values (1) on conflict do nothing;
+alter table public.settings add column if not exists registrations_open boolean not null default true;
+
+-- ¿Las participantes pueden inscribirse o editar su ficha?
+create or replace function public.registrations_open() returns boolean
+language sql stable security definer set search_path = public as $$
+  select coalesce((select registrations_open from public.settings where id = 1), true);
+$$;
 
 -- ---------- Funciones auxiliares ----------
 create or replace function public.is_staff() returns boolean
@@ -153,6 +160,9 @@ create or replace function public.protect_profile() returns trigger
 language plpgsql security definer set search_path = public as $$
 begin
   if auth.uid() is null or public.is_staff() then return new; end if; -- SQL editor, triggers o staff
+  if not public.registrations_open() then
+    raise exception 'INSCRIPCIONES_CERRADAS' using hint = 'Las inscripciones están cerradas.';
+  end if;
   if not (old.role = 'publico' and new.role = 'participant') then
     new.role := old.role;
   end if;
@@ -237,6 +247,7 @@ grant select on public.settings to service_role;
 grant execute on function public.vote_results() to anon, authenticated;
 grant execute on function public.my_vote() to authenticated;
 grant execute on function public.is_staff() to anon, authenticated;
+grant execute on function public.registrations_open() to anon, authenticated;
 
 -- ---------- Almacenamiento de fotos ----------
 insert into storage.buckets (id, name, public) values ('photos', 'photos', true)
@@ -244,10 +255,12 @@ insert into storage.buckets (id, name, public) values ('photos', 'photos', true)
 
 drop policy if exists "subir fotos propias" on storage.objects;
 create policy "subir fotos propias" on storage.objects for insert to authenticated
-  with check (bucket_id = 'photos' and (storage.foldername(name))[1] = auth.uid()::text);
+  with check (bucket_id = 'photos' and (storage.foldername(name))[1] = auth.uid()::text
+              and (public.registrations_open() or public.is_staff()));
 drop policy if exists "borrar fotos propias" on storage.objects;
 create policy "borrar fotos propias" on storage.objects for delete to authenticated
-  using (bucket_id = 'photos' and (storage.foldername(name))[1] = auth.uid()::text);
+  using (bucket_id = 'photos' and (storage.foldername(name))[1] = auth.uid()::text
+         and (public.registrations_open() or public.is_staff()));
 
 -- =====================================================================
 --  Para convertir una cuenta en STAFF (que entre primero con Discord en la web):

@@ -5,15 +5,23 @@ import { getSupabase } from '@/lib/supabase';
 import { routeAfterLogin } from '@/lib/routes';
 import { authErrorMessage } from '@/lib/discord';
 import { EVENT } from '@/lib/config';
+import { useSettings } from '@/lib/useSettings';
 import { PublicHeader, Loading } from '@/components/ui';
 import DiscordButton from '@/components/DiscordButton';
 import Icon from '@/components/Icon';
+
+async function regClosed(sb) {
+  const { data } = await sb.from('settings').select('registrations_open').eq('id', 1).single();
+  return data?.registrations_open === false;
+}
 
 function LoginInner() {
   const router = useRouter();
   const params = useSearchParams();
   const rol = params.get('rol') === 'staff' ? 'staff' : 'participante';
   const isStaff = rol === 'staff';
+  const settings = useSettings();
+  const closed = !isStaff && settings?.registrations_open === false;
   const [err, setErr] = useState(params.get('error') ? authErrorMessage(params.get('error')) : '');
 
   // Si ya tiene sesión, lo mandamos directo a su panel
@@ -22,9 +30,9 @@ function LoginInner() {
       const sb = getSupabase();
       const { data: { session } } = await sb.auth.getSession();
       if (!session) return;
-      const to = await routeAfterLogin(sb, session.user.id, rol);
+      const to = await routeAfterLogin(sb, session.user.id, rol, { closedForParticipants: await regClosed(sb) });
       if (to) router.replace(to);
-      else setErr('Tu cuenta de Discord no tiene acceso de staff.');
+      else if (rol === 'staff') setErr('Tu cuenta de Discord no tiene acceso de staff.');
     })();
   }, [rol, router]);
 
@@ -40,7 +48,13 @@ function LoginInner() {
             </p>
           </div>
 
-          <DiscordButton next={rol} className="btn-block" onError={(m) => setErr(authErrorMessage(m))} />
+          {closed ? (
+            <div className="notice notice-gold" style={{ textAlign: 'left' }}>
+              <Icon name="info" /> Las inscripciones están cerradas. Ya no es posible inscribirse ni modificar la postulación.
+            </div>
+          ) : (
+            <DiscordButton next={rol} className="btn-block" onError={(m) => setErr(authErrorMessage(m))} />
+          )}
 
           {err && (
             <div className="notice" role="alert" style={{ textAlign: 'left' }}>

@@ -15,7 +15,7 @@ El inicio de sesión es **solo con Discord**.
 | `/staff/participantes` | Staff | Listado con búsqueda (también por usuario o ID de Discord) |
 | `/staff/evaluar/[id]` | Staff | Calificación 0–10 en 5 criterios + comentarios; muestra el Discord de la participante |
 | `/staff/final` | Staff | Ranking (jurado 80 % + público 20 %), elegir las 10 finalistas y publicarlas |
-| `/staff/votacion` | Staff | Abrir/cerrar votación, mostrar resultados, conteo de votos |
+| `/staff/votacion` | Staff | Abrir/cerrar **inscripciones** y votación, mostrar resultados, conteo de votos |
 | `/votar` | Público | Votación con Discord: **1 voto por cuenta y 1 por IP** |
 | `/finalistas` | Público | Las 10 finalistas (cuando el staff las publica) |
 
@@ -23,6 +23,10 @@ El inicio de sesión es **solo con Discord**.
 - Al entrar por primera vez se guardan en `profiles`: `discord_id`, `discord_username`, `discord_name`, `discord_avatar` y `discord_created_at`.
 - La fecha de creación sale del propio ID de Discord. **Si la cuenta tiene menos de 3 meses, la base de datos rechaza el registro** (la cuenta ni siquiera se crea) y la persona ve el aviso correspondiente. El servidor de votos lo vuelve a comprobar antes de aceptar cada voto.
 - Para cambiar los 3 meses: `discord_min_age()` en `supabase/schema.sql`, `discordMinMonths` en `lib/config.js` y `MIN_MONTHS` en `app/api/vote/route.js`.
+
+### Cerrar inscripciones
+- En **Staff → Votación y ajustes** apaga **Inscripciones abiertas**. El botón *Participante* de la portada se desactiva y nadie (salvo el staff) puede inscribirse ni modificar su ficha o sus fotos. La base de datos lo bloquea también, aunque alguien tenga la sesión abierta.
+- El staff sigue pudiendo evaluar, elegir finalistas y editar fichas.
 
 ### Cómo funciona el voto
 - El voto pasa por `/api/vote` (servidor), que comprueba la sesión de Discord con Supabase, la antigüedad de la cuenta y la IP.

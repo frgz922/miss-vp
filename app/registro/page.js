@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { getSupabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/useAuth';
+import { useSettings } from '@/lib/useSettings';
 import { EVENT, STATES } from '@/lib/config';
 import { ageFrom, fullName } from '@/lib/utils';
 import { Logo, Loading, Photo, DiscordChip } from '@/components/ui';
@@ -24,6 +25,7 @@ function RegistroInner() {
   const [err, setErr] = useState('');
   const [accept, setAccept] = useState(false);
   const fileRef = useRef(null);
+  const settings = useSettings();
 
   useEffect(() => {
     if (profile && !form) {
@@ -33,7 +35,27 @@ function RegistroInner() {
     }
   }, [profile, form]);
 
-  if (loading || !form) return <Loading full />;
+  if (loading || !form || !settings) return <Loading full />;
+
+  if (settings.registrations_open === false) {
+    return (
+      <>
+        <header className="topbar">
+          <Link href="/"><Logo /></Link>
+          <DiscordChip profile={profile} />
+        </header>
+        <div className="auth-wrap">
+          <div className="card auth-card" style={{ textAlign: 'center' }}>
+            <h2>Inscripciones cerradas</h2>
+            <p className="muted" style={{ margin: 0 }}>El periodo de inscripción terminó. Ya no es posible inscribirse ni modificar la postulación.</p>
+            {profile.role === 'participant' && profile.status !== 'pendiente'
+              ? <Link href="/perfil" className="btn btn-gold btn-block"><Icon name="user" /> Ver mi perfil</Link>
+              : <Link href="/" className="btn btn-ghost btn-block"><Icon name="home" /> Volver al inicio</Link>}
+          </div>
+        </div>
+      </>
+    );
+  }
 
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
   const age = ageFrom(form.birth_date);
@@ -65,7 +87,7 @@ function RegistroInner() {
       ...extra,
     };
     const { error } = await getSupabase().from('profiles').update(payload).eq('id', user.id);
-    if (error) throw error;
+    if (error) throw new Error(/INSCRIPCIONES_CERRADAS/.test(error.message) ? 'Las inscripciones se cerraron. Ya no puedes modificar tu postulación.' : error.message);
   }
 
   async function go(target) {

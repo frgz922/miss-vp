@@ -33,20 +33,25 @@ function PerfilInner() {
   if (loading || profile?.role === 'publico') return <Loading full />;
   const p = profile || {};
   const isFinalist = settings.finalists_public && p.is_finalist;
+  const closed = settings.registrations_open === false;
+  const links = closed ? LINKS.filter((l) => l.key === 'perfil') : LINKS;
   const age = ageFrom(p.birth_date);
 
   return (
-    <AppShell links={LINKS} active="perfil" userName={fullName(p)} avatar={avatarOf(p)} onLogout={() => signOut(router)}>
+    <AppShell links={links} active="perfil" userName={fullName(p)} avatar={avatarOf(p)} onLogout={() => signOut(router)}>
       <div className="page-head">
         <div>
           <h1 className="page-title">Mi Perfil</h1>
-          <p className="muted">Revisa y actualiza tu información</p>
+          <p className="muted">{closed ? 'Revisa tu información' : 'Revisa y actualiza tu información'}</p>
         </div>
-        {p.status === 'pendiente'
+        {p.status === 'pendiente' && !closed
           ? <Link href="/registro" className="btn btn-gold btn-sm"><Icon name="edit" /> Completar registro</Link>
           : <span className="row-flex"><Badge status={p.status} finalist={isFinalist} /></span>}
       </div>
 
+      {closed && (
+        <div className="notice notice-gold mb"><Icon name="info" /> Las inscripciones están cerradas. Ya no es posible modificar la postulación.</div>
+      )}
       {params.get('ok') && (
         <div className="notice notice-ok mb"><Icon name="check" /> Tu perfil ha sido registrado correctamente.</div>
       )}
@@ -57,10 +62,10 @@ function PerfilInner() {
       <div className="profile-grid">
         <div>
           <Photo src={mainPhoto(p)} alt={fullName(p)} />
-          <Link href="/registro?paso=3" className="btn btn-ghost btn-sm btn-block mt" style={{ marginTop: '.6rem' }}><Icon name="camera" /> Cambiar foto</Link>
+          {!closed && <Link href="/registro?paso=3" className="btn btn-ghost btn-sm btn-block mt" style={{ marginTop: '.6rem' }}><Icon name="camera" /> Cambiar foto</Link>}
         </div>
         <div className="card">
-          <div className="card-head">Información Personal <Link href="/registro" className="btn btn-ghost btn-sm"><Icon name="edit" /> Editar</Link></div>
+          <div className="card-head">Información Personal {!closed && <Link href="/registro" className="btn btn-ghost btn-sm"><Icon name="edit" /> Editar</Link>}</div>
           <dl className="info-list">
             <dt>Nombre:</dt><dd>{fullName(p)}</dd>
             <dt>Edad:</dt><dd>{age != null ? `${age} años` : '—'}</dd>
@@ -76,7 +81,7 @@ function PerfilInner() {
       </div>
 
       <div className="card mt">
-        <div className="card-head">Mis Fotos <Link href="/registro?paso=3" className="btn btn-ghost btn-sm">Gestionar <Icon name="right" /></Link></div>
+        <div className="card-head">Mis Fotos {!closed && <Link href="/registro?paso=3" className="btn btn-ghost btn-sm">Gestionar <Icon name="right" /></Link>}</div>
         <div className="card-pad">
           {p.photos?.length
             ? <div className="photos-row">{p.photos.map((u) => <Photo key={u} src={u} />)}</div>
@@ -86,7 +91,7 @@ function PerfilInner() {
 
       <div className="notice mt">
         <Icon name="info" />
-        {p.status === 'pendiente' && 'Tu inscripción está incompleta. Termina tu ficha para aparecer en el certamen.'}
+        {p.status === 'pendiente' && (closed ? 'Tu inscripción quedó incompleta y las inscripciones ya cerraron.' : 'Tu inscripción está incompleta. Termina tu ficha para aparecer en el certamen.')}
         {p.status === 'en_revision' && 'Tu inscripción fue recibida y está siendo evaluada por el jurado.'}
         {p.status === 'completado' && 'El jurado ya completó tu evaluación. ¡Mucha suerte!'}
       </div>
