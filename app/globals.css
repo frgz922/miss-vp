@@ -261,6 +261,14 @@ a.list-row:hover { background: rgba(255, 255, 255, 0.03); }
 .modal-bg { position: fixed; inset: 0; background: rgba(5, 2, 12, 0.75); display: grid; place-items: center; z-index: 50; padding: 1rem; }
 .modal { max-width: 400px; width: 100%; padding: 1.6rem; text-align: center; display: grid; gap: 0.9rem; justify-items: center; }
 .modal .photo { width: 150px; }
+.ficha { max-width: 480px; max-height: calc(100vh - 2rem); overflow-y: auto; position: relative; }
+.ficha .photo { width: 180px; }
+.ficha-close { position: absolute; top: 0.7rem; right: 0.7rem; width: 34px; height: 34px; border-radius: 50%; border: 1px solid var(--border); background: rgba(13, 6, 25, 0.6); color: var(--text); cursor: pointer; display: grid; place-items: center; }
+.ficha-body { width: 100%; text-align: left; margin: 0; display: grid; gap: 0.25rem; }
+.ficha-body dt { font-size: 0.76rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--gold); font-weight: 600; margin-top: 0.7rem; }
+.ficha-body dd { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.55; }
+.ccard-open { all: unset; cursor: pointer; display: flex; flex-direction: column; gap: 0.55rem; border-radius: 12px; }
+.ccard-open:focus-visible { outline: 2px solid var(--gold); outline-offset: 3px; }
 .toast { position: fixed; bottom: 1.5rem; left: 50%; transform: translateX(-50%); z-index: 60; background: #1d3b2f; border: 1px solid rgba(60, 207, 142, 0.5); padding: 0.8rem 1.2rem; border-radius: 12px; display: flex; gap: 0.6rem; align-items: center; box-shadow: var(--shadow); cursor: pointer; max-width: calc(100vw - 2rem); }
 .toast .icon { color: var(--ok); }
 .toast-err { background: #3d1622; border-color: rgba(255, 107, 129, 0.5); }

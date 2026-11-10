@@ -16,6 +16,7 @@ export default function VotarPage() {
   const [session, setSession] = useState(null);
   const [me, setMe] = useState(null);
   const [confirm, setConfirm] = useState(null);
+  const [ficha, setFicha] = useState(null);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState(null);
   const [q, setQ] = useState('');
@@ -130,11 +131,13 @@ export default function VotarPage() {
                   const v = results[c.id] || 0;
                   return (
                     <div key={c.id} className={`ccard ${mine ? 'voted' : ''}`}>
-                      <Photo src={mainPhoto(c)} alt={shortName(c)} />
-                      <div>
-                        <div className="ccard-name">{shortName(c)}</div>
-                        <div className="ccard-sub">{c.state}{c.age ? ` · ${c.age} años` : ''}</div>
-                      </div>
+                      <button type="button" className="ccard-open" onClick={() => setFicha(c)} aria-label={`Ver ficha de ${shortName(c)}`}>
+                        <Photo src={mainPhoto(c)} alt={shortName(c)} />
+                        <div>
+                          <div className="ccard-name">{shortName(c)}</div>
+                          <div className="ccard-sub">{c.state}{c.age ? ` · ${c.age} años` : ''}</div>
+                        </div>
+                      </button>
                       {showResults && (
                         <div style={{ padding: '0 .2rem' }}>
                           <div className="bar"><span style={{ width: `${total ? (v / total) * 100 : 0}%` }} /></div>
@@ -144,6 +147,7 @@ export default function VotarPage() {
                       {mine
                         ? <span className="btn btn-gold btn-sm" aria-disabled="true"><Icon name="check" /> Tu voto</span>
                         : <button className="btn btn-purple btn-sm" disabled={blocked} onClick={() => setConfirm(c)}><Icon name="heart" /> Votar</button>}
+                      <button type="button" className="btn btn-ghost btn-sm" onClick={() => setFicha(c)}><Icon name="file" /> Ver ficha</button>
                     </div>
                   );
                 })}
@@ -152,6 +156,30 @@ export default function VotarPage() {
           </>
         )}
       </div>
+
+      {ficha && (
+        <div className="modal-bg" onClick={() => setFicha(null)}>
+          <div className="card modal ficha" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label={`Ficha de ${shortName(ficha)}`}>
+            <button className="ficha-close" onClick={() => setFicha(null)} aria-label="Cerrar"><Icon name="x" /></button>
+            <Photo src={mainPhoto(ficha)} alt={shortName(ficha)} />
+            <h3 className="gold-text" style={{ margin: 0 }}>{shortName(ficha)}</h3>
+            <dl className="ficha-body">
+              <dt>Estado que quiere representar</dt>
+              <dd>{ficha.state || '—'}</dd>
+              <dt>Acerca de mí</dt>
+              <dd>{ficha.about_me || '—'}</dd>
+              <dt>¿Por qué quiere participar?</dt>
+              <dd>{ficha.bio || '—'}</dd>
+            </dl>
+            <div className="row-flex">
+              <button className="btn btn-ghost" onClick={() => setFicha(null)}>Cerrar</button>
+              {status.votedFor === ficha.id
+                ? <span className="btn btn-gold" aria-disabled="true"><Icon name="check" /> Tu voto</span>
+                : <button className="btn btn-purple" disabled={blocked} onClick={() => { setConfirm(ficha); setFicha(null); }}><Icon name="heart" /> Votar por ella</button>}
+            </div>
+          </div>
+        </div>
+      )}
 
       {confirm && (
         <div className="modal-bg" onClick={() => !busy && setConfirm(null)}>

@@ -212,7 +212,8 @@ select p.id, p.first_name, p.last_name, p.state,
        date_part('year', age(p.birth_date))::int as age,
        p.height_cm, p.photo_url, p.photos,
        case when (select finalists_public from public.settings where id = 1)
-            then p.is_finalist else false end as is_finalist
+            then p.is_finalist else false end as is_finalist,
+       p.about_me, p.bio   -- se muestran en la ficha pública de la votación
 from public.profiles p
 where p.role = 'participant' and p.status in ('en_revision','completado');
 
