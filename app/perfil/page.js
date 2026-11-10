@@ -13,7 +13,6 @@ const LINKS = [
   { key: 'perfil', href: '/perfil', label: 'Mi Perfil', icon: 'home' },
   { key: 'ficha', href: '/registro', label: 'Mi Ficha', icon: 'file' },
   { key: 'fotos', href: '/registro?paso=3', label: 'Mis Fotos', icon: 'camera' },
-  { key: 'votar', href: '/votar', label: 'Votación pública', icon: 'heart' },
 ];
 
 function PerfilInner() {

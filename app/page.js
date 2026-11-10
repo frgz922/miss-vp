@@ -1,8 +1,15 @@
+'use client';
 import Link from 'next/link';
 import Icon from '@/components/Icon';
 import { EVENT } from '@/lib/config';
+import { useSettings } from '@/lib/useSettings';
 
 export default function Home() {
+  // Los enlaces solo aparecen si el staff activó la votación o publicó las finalistas
+  const settings = useSettings();
+  const showVote = settings?.voting_open === true;
+  const showFinalists = settings?.finalists_public === true;
+
   return (
     <main className="hero">
       {/* Imagen de portada: cámbiala reemplazando public/fondo-inicio.jpg */}
@@ -23,10 +30,12 @@ export default function Home() {
           <Link className="btn btn-gold" href="/login?rol=participante"><Icon name="user" /> Participante</Link>
           <Link className="btn btn-purple" href="/login?rol=staff"><Icon name="shield" /> Staff</Link>
         </div>
-        <div className="login-links">
-          <Link href="/votar"><Icon name="heart" /> Votación del público</Link>
-          <Link href="/finalistas"><Icon name="award" /> Finalistas</Link>
-        </div>
+        {(showVote || showFinalists) && (
+          <div className="login-links">
+            {showVote && <Link href="/votar"><Icon name="heart" /> Votación del público</Link>}
+            {showFinalists && <Link href="/finalistas"><Icon name="award" /> Finalistas</Link>}
+          </div>
+        )}
       </div>
     </main>
   );

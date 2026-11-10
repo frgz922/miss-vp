@@ -7,11 +7,13 @@ import Crown from '@/components/Crown';
 import Icon from '@/components/Icon';
 import { EVENT } from '@/lib/config';
 import { shortName, mainPhoto } from '@/lib/utils';
+import { useSettings } from '@/lib/useSettings';
 
 const titleCase = (s) => s.toLowerCase().replace(/(^|\s)\S/g, (m) => m.toUpperCase());
 
 export default function FinalistasPage() {
   const [list, setList] = useState(null);
+  const settings = useSettings();
 
   useEffect(() => {
     getSupabase().from('public_contestants').select('*').eq('is_finalist', true).order('first_name')
@@ -30,7 +32,7 @@ export default function FinalistasPage() {
         {list === null ? <Loading /> : list.length === 0 ? (
           <div className="card empty">
             <p>Las finalistas aún no han sido anunciadas.</p>
-            <Link href="/votar" className="btn btn-gold"><Icon name="heart" /> Ir a votar por tu favorita</Link>
+            {settings?.voting_open && <Link href="/votar" className="btn btn-gold"><Icon name="heart" /> Ir a votar por tu favorita</Link>}
           </div>
         ) : (
           <div className="fgrid">

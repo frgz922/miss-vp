@@ -87,7 +87,7 @@ create unique index if not exists votes_discord_id_key on public.votes (discord_
 -- ---------- Ajustes del certamen (una sola fila) ----------
 create table if not exists public.settings (
   id               int primary key default 1 check (id = 1),
-  voting_open      boolean not null default true,
+  voting_open      boolean not null default false,
   results_public   boolean not null default false,
   finalists_public boolean not null default false
 );
